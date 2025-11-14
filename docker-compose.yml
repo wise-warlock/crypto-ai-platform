@@ -1,0 +1,83 @@
+version: '3.8' # (Bạn có thể xóa dòng này nếu muốn, như cảnh báo đã nói)
+
+services:
+  # --- 1. CƠ SỞ DỮ LIỆU ---
+
+  mongo:
+    image: mongo:latest # Sử dụng hình ảnh Mongo mới nhất
+    container_name: mongo_db
+    ports:
+      # Ánh xạ cổng 27017 (cổng CSDL) của máy bạn vào container
+      - "27017:27017"
+    volumes:
+      # Dòng này để dữ liệu không bị mất khi bạn tắt container
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest # Sử dụng hình ảnh Redis mới nhất
+    container_name: redis_cache
+    ports:
+      # Ánh xạ cổng 6379 (cổng CSDL) của máy bạn vào container
+      - "6379:6379"
+    restart: unless-stopped
+
+  # --- 2. BACKEND SERVICES ---
+
+  ai-service:
+    build: ./backend-services/ai-agent-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend-services/ai-agent-service/app:/app
+    environment:
+      MONGO_URI: "mongodb://mongo:27017/"
+      REDIS_HOST: "redis"
+      # --- THÊM DÒNG NÀY ---
+      # Bạn BẮT BUỘC phải thay "your_openai_key_here" bằng API key thật
+      OPENAI_API_KEY: "sk-abcdijkl1234uvwxabcdijkl1234uvwxabcdijkl" 
+    depends_on:
+      - mongo
+      - redis
+
+  trading-service:
+    build: ./backend-services/auto-trading-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-services/auto-trading-service/app:/app
+    environment:
+      MONGO_URI: "mongodb://mongo:27017/"
+      REDIS_HOST: "redis"
+    depends_on:
+      - mongo
+      - redis
+
+  websocket-service:
+    build: ./backend-services/websocket-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./backend-services/websocket-service/src:/app/src
+    environment:
+      REDIS_HOST: "redis"
+    depends_on:
+      - redis
+
+  # --- 3. FRONTEND ---
+
+  frontend-web:
+    build: ./frontend-web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend-web/app:/app/app
+    depends_on:
+      - ai-service
+      - trading-service
+      - websocket-service
+
+# --- VOLUMES ---
+# Định nghĩa volume để lưu trữ dữ liệu Mongo
+volumes:
+  mongo-data:

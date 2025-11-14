@@ -1,0 +1,14 @@
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# SỬA DÒNG NÀY:
+# Copy nội dung của thư mục 'app' (tức là main.py) vào '.' (tức là /app)
+COPY ./app/ .
+
+# Cổng 8001
+EXPOSE 8001
+
+# ĐẢM BẢO DÒNG NÀY ĐÚNG:
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
