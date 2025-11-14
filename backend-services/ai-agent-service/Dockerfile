@@ -1,10 +1,10 @@
-FROM python:3.10-slim
+FROM python:3.11-slim  
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # SỬA DÒNG NÀY:
-# Copy nội dung của thư mục 'app' (tức là main.py) vào '.' (tức là /app)
+# Copy nội dung của thư mục 'app' (tức là main.py) vào '.'
 COPY ./app/ .
 
 # Cổng 8001

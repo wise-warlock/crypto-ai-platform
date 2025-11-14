@@ -1,0 +1,10 @@
+# Bỏ qua file môi trường bí mật
+.env
+
+# Bỏ qua các thư mục dependencies
+node_modules/
+__pycache__/
+
+# Bỏ qua các file rác
+*.pyc
+*.DS_Store

@@ -2,3 +2,7 @@ fastapi
 uvicorn[standard]
 fastapi-cors
 redis
+httpx
+solana           
+solders    
+based58

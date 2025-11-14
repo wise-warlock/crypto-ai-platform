@@ -1,160 +1,147 @@
 // frontend-web/app/page.tsx
 
-"use client"; // Đánh dấu đây là Client Component
+"use client"; 
 
 import { useState, useEffect } from "react";
-// Import thư viện socket.io-client
 import io, { Socket } from "socket.io-client";
 
-// --- Định nghĩa các URL của Backend ---
+// --- URL (Không đổi) ---
 const SOCKET_URL = "http://localhost:8002";
 const AI_SERVICE_URL = "http://localhost:8001";
 const TRADE_SERVICE_URL = "http://localhost:8000";
 
-// Định nghĩa kiểu dữ liệu cho giá
+// ... (Interface PriceData không đổi) ...
 interface PriceData {
   symbol: string;
   price: string;
 }
 
-// Đây là component chính của trang chủ
 export default function Home() {
-  // --- STATE CHO WEBSOCKET ---
+  // --- States (Không đổi) ---
   const [price, setPrice] = useState<PriceData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-
-  // --- STATE CHO AI CHAT ---
-  const [prompt, setPrompt] = useState(""); // Nội dung gõ vào input
-  const [aiResponse, setAiResponse] = useState(""); // Nội dung AI trả về
-  const [isAiLoading, setIsAiLoading] = useState(false); // Trạng thái chờ
-
-  // --- STATE CHO TRADING ---
-  const [tradeResult, setTradeResult] = useState(""); // Kết quả giao dịch
-  const [isTrading, setIsTrading] = useState(false); // Trạng thái chờ
-
-  // --- STATE CHO PRICE CACHE (REDIS) ---
+  const [prompt, setPrompt] = useState("");
+  const [aiResponse, setAiResponse] = useState(""); 
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [tradeResult, setTradeResult] = useState(""); 
+  const [isTrading, setIsTrading] = useState(false); 
   const [priceResult, setPriceResult] = useState("");
   const [isPriceLoading, setIsPriceLoading] = useState(false);
 
-  // --- 1. HIỆU ỨNG: KẾT NỐI WEBSOCKET ---
+  // --- 1. WebSocket (Không đổi) ---
   useEffect(() => {
-    // Khởi tạo kết nối socket
+    // ... (Giữ nguyên code)
     const socket: Socket = io(SOCKET_URL);
-
-    // Lắng nghe sự kiện 'connect'
     socket.on("connect", () => setIsConnected(true));
-
-    // Lắng nghe sự kiện 'disconnect'
     socket.on("disconnect", () => setIsConnected(false));
-
-    // Lắng nghe sự kiện 'price-update' từ server
     socket.on("price-update", (data: PriceData) => {
-      setPrice(data); // Cập nhật state khi có giá mới
+      setPrice(data); 
     });
-
-    // Hàm dọn dẹp: Ngắt kết nối khi component bị unmount
     return () => {
       socket.disconnect();
     };
-  }, []); // Mảng rỗng [] nghĩa là effect này chỉ chạy 1 lần khi component mount
+  }, []); 
 
-  // --- 2. HÀM XỬ LÝ: GỌI AI AGENT (MONGO) ---
+  // --- 2. AI Chat (Không đổi) ---
   const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Ngăn form reload trang
-    if (!prompt) return; // Không làm gì nếu input rỗng
-
+    // ... (Giữ nguyên code)
+    e.preventDefault(); 
+    if (!prompt) return; 
     setIsAiLoading(true);
     setAiResponse("");
     try {
-      // Gọi API đến AI Service (FastAPI)
       const response = await fetch(`${AI_SERVICE_URL}/api/v1/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: "user_001", prompt: prompt }),
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
-      setAiResponse(data.response); // Cập nhật kết quả vào state
+      setAiResponse(data.response); 
     } catch (error) {
       console.error("Lỗi khi gọi AI service:", error);
       setAiResponse("Lỗi: Không thể kết nối hoặc xử lý yêu cầu đến AI service.");
     } finally {
-      setIsAiLoading(false); // Luôn tắt loading
+      setIsAiLoading(false); 
     }
   };
 
-  // --- 3. HÀM XỬ LÝ: GỌI AUTO-TRADING ---
+  // --- 3. HÀM NÂNG CẤP: GỌI AUTO-TRADING THẬT ---
   const handleExecuteTrade = async () => {
     setIsTrading(true);
-    setTradeResult("Đang gửi lệnh giao dịch...");
+    setTradeResult("Đang gửi lệnh SWAP (5 USDC -> SOL)...");
     try {
-      // Định nghĩa một lệnh giao dịch giả lập
+      // --- THAY ĐỔI PAYLOAD ---
+      // Định nghĩa một lệnh swap thật (Đổi 5 USDC lấy SOL)
       const order = {
-        user_id: "user_001",
-        action: "BUY",
-        symbol: "SOL-USDT",
-        amount_usd: 100.0,
+        input_symbol: "USDC",
+        output_symbol: "SOL",
+        amount: 5.0, // Swap 5 USDC
+        slippage_bps: 50
       };
 
-      // Gọi API đến Trading Service (FastAPI)
       const response = await fetch(`${TRADE_SERVICE_URL}/api/v1/trade/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
       });
 
+      const data = await response.json(); // Lấy data kể cả khi lỗi
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Nếu lỗi, hiển thị lỗi từ server
+        throw new Error(data.detail || `HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      // Hiển thị kết quả (từ trường 'message' của backend)
-      setTradeResult(`Trạng thái: ${data.status}\nMessage: ${data.message}\nTX ID: ${data.tx_id}`);
-    } catch (error) {
+      // Nếu thành công, hiển thị kết quả
+      setTradeResult(
+        `Trạng thái: ${data.status}\nMessage: ${data.message}\n` +
+        `Input: ${data.input_amount} ${data.input_token}\n` +
+        `Output (Dự kiến): ${data.output_amount_prediction} ${data.output_token}\n` +
+        `TX ID: ${data.tx_id}`
+      );
+      
+    } catch (error: any) {
       console.error("Lỗi khi gọi Trading service:", error);
-      setTradeResult("Lỗi: Không thể kết nối hoặc xử lý yêu cầu đến Trading service.");
+      setTradeResult(`Lỗi: ${error.message || "Không thể kết nối Trading service."}`);
     } finally {
       setIsTrading(false); // Luôn tắt loading
     }
   };
 
-  // --- 4. HÀM XỬ LÝ: Lấy giá (Kiểm tra Cache Redis) ---
+  // --- 4. Lấy giá (Không đổi) ---
   const handleGetPrice = async () => {
+    // ... (Giữ nguyên code)
     setIsPriceLoading(true);
     setPriceResult("Đang lấy giá...");
-
-    const startTime = Date.now(); // Bắt đầu bấm giờ
+    const startTime = Date.now(); 
     try {
-      const response = await fetch(
-        `${TRADE_SERVICE_URL}/api/v1/price/SOL-USDT`,
-        { method: "GET" }
-      );
+      const response = await fetch(`${TRADE_SERVICE_URL}/api/v1/price/SOL-USDT`, { method: "GET" });
+      const endTime = Date.now();
       const data = await response.json();
-      const endTime = Date.now(); // Dừng bấm giờ
-
+      if (!response.ok) {
+        throw new Error(data.detail || "Lỗi không xác định từ API");
+      }
       setPriceResult(
-        `Giá: $${data.price}\nNguồn: ${data.source}\nThời gian: ${
-          endTime - startTime
-        } ms`
+        `Giá: $${data.price}\nNguồn: ${data.source}\nThời gian: ${endTime - startTime} ms`
       );
-    } catch (error) {
+    } catch (error: any) { 
       console.error("Lỗi khi gọi Price service:", error);
-      setPriceResult("Lỗi, không thể kết nối đến Price service.");
+      setPriceResult(`Lỗi: ${error.message || "Không thể kết nối đến Price service."}`);
     }
     setIsPriceLoading(false);
   };
 
-  // --- PHẦN RENDER GIAO DIỆN (JSX) ---
+  // --- PHẦN RENDER GIAO DIỆN (THAY ĐỔI) ---
   return (
     <>
       <h1>Bảng điều khiển Crypto AI</h1>
 
-      {/* --- Khu vực 1: WebSocket Price --- */}
+      {/* --- Khu vực 1 (Không đổi) --- */}
       <section className="section">
+        {/* ... (Giữ nguyên code) ... */}
         <h2>Giá Real-time (WebSocket)</h2>
         <p className={`price-status ${isConnected ? 'status-connected' : 'status-disconnected'}`}>
           Trạng thái: {isConnected ? "Đã kết nối" : "Mất kết nối"}
@@ -168,8 +155,9 @@ export default function Home() {
         )}
       </section>
 
-      {/* --- Khu vực 2: AI Agent Chat (Mongo) --- */}
+      {/* --- Khu vực 2 (Không đổi) --- */}
       <section className="section">
+        {/* ... (Giữ nguyên code) ... */}
         <h2>Hỏi AI Agent (FastAPI - Port 8001)</h2>
         <form onSubmit={handleChatSubmit} className="input-group">
           <input
@@ -177,7 +165,7 @@ export default function Home() {
             className="input-text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Hỏi về thị trường (vd: phân tích btc)"
+            placeholder="Hỏi về thị trường (vd: swap 0.1 SOL lấy USDC)"
             disabled={isAiLoading}
           />
           <button type="submit" className="button" disabled={isAiLoading}>
@@ -192,11 +180,11 @@ export default function Home() {
         )}
       </section>
 
-      {/* --- Khu vực 3: Auto Trading --- */}
+      {/* --- Khu vực 3 (THAY ĐỔI TEXT NÚT BẤM) --- */}
       <section className="section">
         <h2>Thực thi Giao dịch (FastAPI - Port 8000)</h2>
         <button onClick={handleExecuteTrade} disabled={isTrading} className="button">
-          {isTrading ? "Đang xử lý..." : "Thực hiện lệnh MUA 100$ SOL (Giả lập)"}
+          {isTrading ? "Đang xử lý..." : "Thực hiện lệnh SWAP 5 USDC lấy SOL (Thật)"}
         </button>
         {tradeResult && (
           <div className="result-box">
@@ -206,8 +194,9 @@ export default function Home() {
         )}
       </section>
 
-      {/* --- Khu vực 4: Kiểm tra Cache Redis --- */}
+      {/* --- Khu vực 4 (Không đổi) --- */}
       <section className="section">
+        {/* ... (Giữ nguyên code) ... */}
         <h2>Kiểm tra Cache (Redis - Port 8000)</h2>
         <p style={{ fontSize: "0.9rem", color: "#555", marginBottom: "10px" }}>
           Bấm nút này. Lần đầu sẽ mất ~2 giây (API). Bấm lại ngay sau đó sẽ

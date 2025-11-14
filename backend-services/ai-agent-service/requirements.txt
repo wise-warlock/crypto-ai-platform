@@ -6,3 +6,4 @@ pymongo
 redis  # <-- Bạn cũng cần redis ở service này để làm tool
 langchain==0.2  # <-- Thư viện Langchain chính
 langchain-openai
+langgraph
