@@ -6,7 +6,7 @@ import "./globals.css";
 
 // Metadata này sẽ giúp SEO và hiển thị tab trên trình duyệt
 export const metadata: Metadata = {
-  title: "Crypto AI Platform | Đồ án tốt nghiệp",
+  title: "Crypto AI Platform",
   description: "Xây dựng website ứng dụng AI Agents và LLMs trong phân tích thị trường.",
 };
 
